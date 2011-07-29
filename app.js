@@ -1,15 +1,11 @@
 /**
  * Module dependencies.
  */
-
 var express = require('express');
-
 var app = module.exports = express.createServer();
-
 var alfred = require('alfred');
 var db;
 var blogCount = -1;
-
 // Configuration
 app.configure(function() {
     app.set('views', __dirname + '/views');
@@ -23,24 +19,19 @@ app.configure(function() {
     }));
     app.use(app.router);
     app.use(express.static(__dirname + '/public'));
-
 });
-
 app.configure('development', function() {
     app.use(express.errorHandler({
         dumpExceptions: true,
         showStack: true
     }));
 });
-
 app.configure('production', function() {
     app.use(express.errorHandler());
 });
-
 // Routes
 app.get('/', function(req, res) {
     var blogs = [];
-
     db.blogs.scan(function(err, key, value) {
         if (err) {
             throw err;
@@ -55,7 +46,6 @@ app.get('/', function(req, res) {
         blogs.push(value);
     }, true);
 });
-
 app.get('/add/:address', function(req, res) {
     addNewBlog(req.params.address, function(err, result) {
         if (err) {
@@ -68,22 +58,37 @@ app.get('/add/:address', function(req, res) {
         });
     });
 });
-
 app.get('/close', function(req, res) {
-    function stopAll(){
+    function stopAll() {
         process.exit();
     }
-    db.close(function(){
-        setTimeout(stopAll,100);
+    db.close(function() {
+        setTimeout(stopAll, 100);
     }); // all keymaps are closed with DB
     res.send('ok closing');
 });
-
+app.get('/blog/:id', function(req, res) {
+    db.ensure('blog' + req.params.id, function(err, blog_items) {
+        if (err) {
+            throw err;
+        }
+        var items = [];
+        blog_items.scan(function(err, key, value) {
+            if (err) {
+                throw err;
+            }
+            if (err === null && key === null) {
+                res.render('blogPage', {
+                    title: 'title',
+                    items: items
+                });
+            }
+            items.push(value);
+        }, true);
+    });
+});
 app.listen(process.env.C9_PORT);
 console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
-
-
-
 alfred.open('db', function(err, database) {
     if (err) {
         throw err;
@@ -96,7 +101,6 @@ alfred.open('db', function(err, database) {
         });
     });
 });
-
 
 function addNewBlog(adr, next) {
     db.blogs.put(++blogCount, {
