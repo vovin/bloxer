@@ -8,6 +8,7 @@ var app = module.exports = express.createServer();
 
 var alfred = require('alfred');
 var db;
+var blogCount = -1;
 
 // Configuration
 app.configure(function() {
@@ -47,7 +48,8 @@ app.get('/', function(req, res) {
         if (err === null && key === null) {
             return res.render('index', {
                 title: 'Express',
-                blogs: blogs
+                blogs: blogs,
+                count: blogCount
             });
         }
         blogs.push(value);
@@ -55,14 +57,26 @@ app.get('/', function(req, res) {
 });
 
 app.get('/add/:address', function(req, res) {
-    addNewBlog(req.params.address, function(err, result){
-        if(err) { throw err; }
+    addNewBlog(req.params.address, function(err, result) {
+        if (err) {
+            throw err;
+        }
         res.render('addResult', {
             title: "adding new blog item",
-            result: result, 
+            result: result,
             address: req.params.address
         });
     });
+});
+
+app.get('/close', function(req, res) {
+    function stopAll(){
+        process.exit();
+    }
+    db.close(function(){
+        setTimeout(stopAll,100);
+    }); // all keymaps are closed with DB
+    res.send('ok closing');
 });
 
 app.listen(process.env.C9_PORT);
@@ -71,23 +85,29 @@ console.log("Express server listening on port %d in %s mode", app.address().port
 
 
 alfred.open('db', function(err, database) {
-  if (err) { throw err; }
-  db = database;
-  db.ensure('blogs', function(err, users_key_map) {
-    console.log('blogs key map attached');
-  });
+    if (err) {
+        throw err;
+    }
+    db = database;
+    db.ensure('blogs', function(err, users_key_map) {
+        console.log('blogs key map attached');
+        users_key_map.count(function(err, count) {
+            blogCount = count
+        });
+    });
 });
 
 
-function addNewBlog(adr, next){
-    db.blogs.put(adr, {url: adr, name: adr},function(validationErrors){
-        if(validationErrors){
+function addNewBlog(adr, next) {
+    db.blogs.put(++blogCount, {
+        url: adr,
+        name: adr
+    }, function(validationErrors) {
+        if (validationErrors) {
             next(null, "failed" + validationErrors);
-        }else{
+        }
+        else {
             next(null, "success");
         }
     });
 }
-
-
-
