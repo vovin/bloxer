@@ -8,6 +8,9 @@ var db;
 var blogCount = -1;
 var scraper = require('scraper');
 var request = require('request');
+var jsdom = require('jsdom');
+var Iconv = require('iconv').Iconv;
+var converter = new Iconv('ISO-8859-2','UTF-8');
 
 // Configuration
 app.configure(function() {
@@ -61,6 +64,7 @@ app.get('/add/:address', function(req, res) {
         });
     });
 });
+
 app.get('/close', function(req, res) {
     function stopAll() {
         process.exit();
@@ -70,8 +74,29 @@ app.get('/close', function(req, res) {
     }); // all keymaps are closed with DB
     res.send('ok closing');
 });
+
+app.get('/route/:adr', function(req, res) {
+    request({uri: 'http://'+req.params.adr, encoding:'binary'},function (err, resp, body){
+            if(err){throw err;}
+//            res.setEncoding('binary');
+            var responseText = converter.convert(body);
+            res.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
+            res.write(responseText.toString('utf8').replace('iso-8859-2','utf-8'));
+            res.end();
+        });
+/*    jsdom.env('http://'+req.params.adr, 
+        ['file:///'+__dirname+'/jquery-1.6.1.min.js'], 
+        function (err, w){
+            res.writeHead(200, {'Content-Type':'text/html; charset=iso-8859-2'});
+            res.write(w.document.getElementsByTagName('html')[0].outerHTML);
+            res.end();
+        }
+    );
+*/
+});
+
 app.get('/blog/:id', function(req, res) {
-    db.ensure('blog' + req.params.id, function(err, blog_items) {
+    db.ensure('blog_' + req.params.id, function(err, blog_items) {
         if (err) {
             throw err;
         }
@@ -90,6 +115,12 @@ app.get('/blog/:id', function(req, res) {
         }, true);
     });
 });
+
+if(typeof process.env.C9_PORT ==='undefined'){
+    process.env.C9_PORT=8888;
+}
+
+
 app.listen(process.env.C9_PORT);
 console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
 
@@ -107,7 +138,8 @@ alfred.open('db', function(err, database) {
 });
 
 function addNewBlog(adr, next) {
-    db.blogs.put(++blogCount, {
+    var blogId = ++blogCount;
+    db.blogs.put(blogId, {
         url: adr,
         name: adr
     }, function(validationErrors) {
@@ -115,13 +147,12 @@ function addNewBlog(adr, next) {
             next(null, "failed" + validationErrors);
         }
         else {
-            getBlogDetails(adr);
-            next(null,"success");
+            getBlogDetails(adr, blogId, next);
         }
     });
 }
 
-function getBlogDetails(name) {
+function getBlogDetails(name, blogId, next) {
     /*
     request({uri: 'http://'+name},function(err,response,body){
         if(err){return next(err, "fail: "+err);}
@@ -130,16 +161,42 @@ function getBlogDetails(name) {
     return;
     */
     console.log('getting details for ',name);
-    scraper('http://' + name, function(err, $) {
+    jsdom.env('http://' + name, ['file:///'+__dirname+'/jquery-1.6.1.min.js'], function(err, w) {
         if (err) {
-            console.log('error occured',err);
-            throw err;
+            return next(err,null);
         }
+        var $ = w.$;
         var u = $('.BlogStronicowanieStrony div a:last').attr('href').split('?');
         var count = (+u[1]);
         var link = u[0];
         var title = $('title').text();
         console.log(count,link,title);
+        var l = 'http://' + name + link + '?' + count;
+        console.log('visiting link:',l);
+        jsdom.env(l, ['file:///'+__dirname+'/jquery-1.6.1.min.js'], function (err, w) {
+          if(err){ return next(err,null);}
+          console.log('no error on ',l);
+          
+          var $ = w.$;
+          $('.BlogWpisBox').each(function (){
+            var item = $(this);
+            var id = item.find('a:first').attr('name');
+            var html = item.html();
+            console.log('saving item',id);
+            saveBlogItem(blogId,id,html);
+          });
+        });
+        return next(null,"success");
     });
 }
+
+function saveBlogItem(blogId,id,html) {
+    db.ensure('blog_' + blogId, function(err, blog_items) {
+        if (err) {
+            throw err;
+        }
+        blog_items.put(id, {blogId: blogId, id: id, content: html},function(e){if(e){throw e;}});
+    });
+  
+} // end of saveBlogItem function
 
