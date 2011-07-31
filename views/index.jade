@@ -2,9 +2,6 @@ h1= title
 p Welcome to #{title}
 p This is a list of available titles (#{count}):
 ul
-    - var blog;
-    - for(var i=0;i<blogs.length;++i){
-    - blog = blogs[i];
+    - each blog,i in blogs
         li
-            a(href=blog.url)=blog.name
-    - }
+            a(href='/blog/'+i)=blog.name + '(' + i + ')'

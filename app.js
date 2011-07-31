@@ -6,6 +6,9 @@ var app = module.exports = express.createServer();
 var alfred = require('alfred');
 var db;
 var blogCount = -1;
+var scraper = require('scraper');
+var request = require('request');
+
 // Configuration
 app.configure(function() {
     app.set('views', __dirname + '/views');
@@ -89,15 +92,16 @@ app.get('/blog/:id', function(req, res) {
 });
 app.listen(process.env.C9_PORT);
 console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
+
 alfred.open('db', function(err, database) {
     if (err) {
         throw err;
     }
     db = database;
-    db.ensure('blogs', function(err, users_key_map) {
+    db.ensure('blogs', function(err, blogs_key_map) {
         console.log('blogs key map attached');
-        users_key_map.count(function(err, count) {
-            blogCount = count
+        blogs_key_map.count(function(err, count) {
+            blogCount = count;
         });
     });
 });
@@ -111,7 +115,31 @@ function addNewBlog(adr, next) {
             next(null, "failed" + validationErrors);
         }
         else {
-            next(null, "success");
+            getBlogDetails(adr);
+            next(null,"success");
         }
     });
 }
+
+function getBlogDetails(name) {
+    /*
+    request({uri: 'http://'+name},function(err,response,body){
+        if(err){return next(err, "fail: "+err);}
+        return next(null, "Success " + body);
+    });
+    return;
+    */
+    console.log('getting details for ',name);
+    scraper('http://' + name, function(err, $) {
+        if (err) {
+            console.log('error occured',err);
+            throw err;
+        }
+        var u = $('.BlogStronicowanieStrony div a:last').attr('href').split('?');
+        var count = (+u[1]);
+        var link = u[0];
+        var title = $('title').text();
+        console.log(count,link,title);
+    });
+}
+
