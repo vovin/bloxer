@@ -11,6 +11,8 @@ var request = require('request');
 var jsdom = require('jsdom');
 var Iconv = require('iconv').Iconv;
 var converter = new Iconv('ISO-8859-2','UTF-8');
+//var converter = new Iconv('ISO-8859-2','UTF-8');
+var fs = require('fs');
 
 // Configuration
 app.configure(function() {
@@ -76,23 +78,37 @@ app.get('/close', function(req, res) {
 });
 
 app.get('/route/:adr', function(req, res) {
+/*
+// Accept-Charset: utf-8    ???
     request({uri: 'http://'+req.params.adr, encoding:'binary'},function (err, resp, body){
             if(err){throw err;}
 //            res.setEncoding('binary');
-            var responseText = converter.convert(body);
+            var buf = new Buffer(body,'binary');
+            var responseText = converter.convert(buf);
             res.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
             res.write(responseText.toString('utf8').replace('iso-8859-2','utf-8'));
             res.end();
         });
-/*    jsdom.env('http://'+req.params.adr, 
-        ['file:///'+__dirname+'/jquery-1.6.1.min.js'], 
+        */
+    jsdom.env('http://'+req.params.adr, 
+        ['file:///'+__dirname+'/jquery-1.6.1.min.js'],{encoding:'binary'},
         function (err, w){
-            res.writeHead(200, {'Content-Type':'text/html; charset=iso-8859-2'});
-            res.write(w.document.getElementsByTagName('html')[0].outerHTML);
+            if(err){throw err;}
+
+            res.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
+            var oHTML = w.document.getElementsByTagName('html')[0].outerHTML.replace('iso-8859-2','utf-8');
+            console.log('type of outerHTML', typeof oHTML);
+//            fs.writeFileSync('html',oHTML);
+            var buf = new Buffer(oHTML, 'binary');
+//            console.log('buffer created');
+            
+            var responseText = converter.convert(buf).toString('utf-8');
+            
+            res.write(responseText);
             res.end();
         }
     );
-*/
+
 });
 
 app.get('/blog/:id', function(req, res) {
