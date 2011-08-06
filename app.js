@@ -189,23 +189,20 @@ function getBlogDetails(name, blogId, next) {
         var count = (+u[1]);
         var link = u[0];
         var title = $('title').text();
-        console.log(count,link,title);
-        var l = 'http://' + name + link + '?' + count;
-        console.log('visiting link:',l);
-        jsdom.env(l, ['file:///'+__dirname+'/jquery-1.6.1.min.js'], function (err, w) {
-          if(err){ return next(err,null);}
-          console.log('no error on ',l);
-          
-          var $ = w.$;
-          $('.BlogWpisBox').each(function (){
-            var item = $(this);
-            var id = item.find('a:first').attr('name');
-            var html = item.html();
-            console.log('saving item',id);
-            saveBlogItem(blogId,id,html);
-          });
-        });
-        return next(null,"success");
+        console.log(count,link,title);        
+        // ToDo: save additional details
+        
+        function processPageCallback(err, nextUri, blogId){
+            if(err){
+                return next(err);
+            }
+            if(nextUri===null){
+                return next(null,'success');
+            }
+            setTimeout((function(uri,blogId,ppage,next){return function processPage(){return ppage(uri,blogId,next);}})(nextUri,blogId,processBlogPage,processPageCallback),2000)
+        }
+        return processPageCallback(null,'http://' + name, blogId, processPageCallback);
+
     });
 }
 
@@ -219,5 +216,34 @@ function saveBlogItem(blogId,id,html) {
   
 } // end of saveBlogItem function
 
+// next(err, nextUri, blogId) - ends null, null, null
+function processBlogPage(uri, blogId, next){
+   console.log('processing url: ',uri);
 
+    return jsdom.env(uri, ['file:///'+__dirname+'/jquery-1.6.1.min.js'],{encoding:'binary'}, parsePage);
+
+    function parsePage(err, window) {
+        if (err){
+            return next(err);
+        }
+        var $ = window.$;
+        $('.BlogWpisBox').each(function (){
+            var item = $(this);
+            var id = item.find('a:first').attr('name');
+            var html = item.html();
+            html = converter.decode(html);
+            console.log('saving item',id);
+            saveBlogItem(blogId,id,html);
+        });
+        var nast = $('.BlogStronicowanieNastepne a');
+        if(nast.length == 0){
+            return next(null,null,null);
+        }
+        
+        var nextUrl = 'http://'+ window.location.host + nast.attr('href');
+        console.log('next url is', nextUrl);
+        
+        return next(null, nextUrl, blogId);
+    }
+}
 
