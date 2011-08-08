@@ -116,22 +116,31 @@ app.get('/route/:adr', function(req, res) {
 
 app.get('/blog/:id', function(req, res) {
     db.ensure('blog_' + req.params.id, function(err, blog_items) {
+      if (err) {
+          throw err;
+      }
+      blog_items.ensureIndex('id',function(i){return i.id},function(err,idxName){
         if (err) {
             throw err;
         }
-        var items = [];
-        blog_items.scan(function(err, key, value) {
+        console.log('ensured index');
+        
+        var off=0;
+        var page=10;
+        blog_items.find({id: {'$neq':'a'}})
+          .order('id ASC')
+//          .offset(off)
+//          .limit(page)
+          .all(function(err, records) {
             if (err) {
                 throw err;
             }
-            if (err === null && key === null) {
-                res.render('blogPage', {
-                    title: 'title',
-                    items: items
-                });
-            }
-            items.push(value);
-        }, true);
+            res.render('blogPage', {
+                title: 'title',
+                items: records
+            });
+          });
+       });
     });
 });
 
