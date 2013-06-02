@@ -9,10 +9,10 @@ var blogCount = -1;
 var scraper = require('scraper');
 var request = require('request');
 var jsdom = require('jsdom');
-var Iconv = require('iconv').Iconv;
+//var Iconv = require('iconv').Iconv;
 var fs = require('fs');
 var Encoder = require('./encoding.js'), converter = new Encoder('iso-8859-2');
-
+var jquery = fs.readFileSync("./jquery-1.6.1.min.js").toString();
 
 
 
@@ -93,9 +93,11 @@ app.get('/route/:adr', function(req, res) {
             res.end();
         });
         */
-    jsdom.env('http://'+req.params.adr, 
-        ['file:///'+__dirname+'/jquery-1.6.1.min.js'],{encoding:'binary'},
-        function (err, w){
+
+    jsdom.env({html:'http://'+req.params.adr, 
+        src:[jquery],
+        encoding:'binary',
+        done: function (err, w){
             if(err){throw err;}
 
             res.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
@@ -110,7 +112,7 @@ app.get('/route/:adr', function(req, res) {
             res.write(responseText);
             res.end();
         }
-    );
+    });
 
 });
 
@@ -189,11 +191,17 @@ function getBlogDetails(name, blogId, next) {
     return;
     */
     console.log('getting details for ',name);
-    jsdom.env('http://' + name, ['file:///'+__dirname+'/jquery-1.6.1.min.js'], function(err, w) {
+    jsdom.env({html:'http://' + name,
+        src: [jquery],
+        //scripts: ["http://code.jquery.com/jquery-1.6.1.min.js"],
+        encoding: 'binary',
+        done: function(err, w) {
         if (err) {
+            console.log("error",err);
             return next(err,null);
         }
         var $ = w.$;
+        console.log('$',$);
         var u = $('.BlogStronicowanieStrony div a:last').attr('href').split('?');
         var count = (+u[1]);
         var link = u[0];
@@ -212,7 +220,7 @@ function getBlogDetails(name, blogId, next) {
         }
         return processPageCallback(null,'http://' + name, blogId, processPageCallback);
 
-    });
+    }});
 }
 
 function saveBlogItem(blogId,id,html) {
@@ -229,7 +237,7 @@ function saveBlogItem(blogId,id,html) {
 function processBlogPage(uri, blogId, next){
    console.log('processing url: ',uri);
 
-    return jsdom.env(uri, ['file:///'+__dirname+'/jquery-1.6.1.min.js'],{encoding:'binary'}, parsePage);
+    return jsdom.env({html:uri, src:[jquery], encoding:'binary', done:parsePage});
 
     function parsePage(err, window) {
         if (err){
