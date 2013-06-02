@@ -13,6 +13,7 @@ var jsdom = require('jsdom');
 var fs = require('fs');
 var Encoder = require('./encoding.js'), converter = new Encoder('iso-8859-2');
 var jquery = fs.readFileSync("./jquery-1.6.1.min.js").toString();
+process.setMaxListeners(0);
 
 
 
