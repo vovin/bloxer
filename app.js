@@ -3,7 +3,7 @@
  */
 var express = require('express');
 var app = module.exports = express.createServer();
-var db = require('./db.js').Db();
+var db = require('./db.js').Db('db/store.json');
 var blogCount = -1;
 var jsdom = require('jsdom');
 var fs = require('fs');
