@@ -122,7 +122,7 @@ app.get('/blog/:id', function(req, res) {
       if (err) {
           throw err;
       }
-      blog_items.ensureIndex('id',function(i){return i.id},function(err,idxName){
+      blog_items.ensureIndex('id',{},function(i){return i.id},function(err,idxName){
         if (err) {
             throw err;
         }
