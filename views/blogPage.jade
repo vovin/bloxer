@@ -1,4 +1,6 @@
 #blog
     #head!= '<b>Hello</b>'
     - each item in items
-        div.item!= item.content
+        div.item
+            div.date!= item.dateString
+            != item.content

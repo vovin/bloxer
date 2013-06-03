@@ -51,14 +51,21 @@ app.get('/', function(req, res) {
 });
 
 app.get('/add/:address', function(req, res) {
-    addNewBlog(req.params.address, function(err, result) {
+    res.render('addBlogPage', {
+        title: "Add new blog for scrapping",
+        address: req.params.address
+    });
+});
+
+app.post('/add/', function(req, res){
+    addNewBlog(req.body.address, function(err, result) {
         if (err) {
             throw err;
         }
         res.render('addResult', {
             title: "adding new blog item",
             result: result,
-            address: req.params.address
+            address: req.body.address
         });
     });
 });
@@ -112,6 +119,12 @@ app.listen(process.env.C9_PORT);
 console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
 
 
+db.getBlogs(function(err,blogs){
+     if (!err) {
+        blogCount = blogs.length-1;
+}});
+
+
 function addNewBlog(adr, next) {
     var blogId = ++blogCount;
 
@@ -157,8 +170,8 @@ function getBlogDetails(name, blogId, next) {
     }});
 }
 
-function saveBlogItem(blogId,id,html) {
-    db.addBlogEntry(blogId,{blogId: blogId, id: id, content: html}, function(e){if(e) throw err;});
+function saveBlogItem(blogId,id,date,html) {
+    db.addBlogEntry(blogId,{blogId: blogId, id: id, dateString: date, content: html}, function(e){if(e) throw err;});
 } // end of saveBlogItem function
 
 // next(err, nextUri, blogId) - ends null, null, null
@@ -176,9 +189,11 @@ function processBlogPage(uri, blogId, next){
             var item = $(this);
             var id = item.find('a:first').attr('name');
             var html = item.html();
+            var date = item.prevAll('.BlogDataWpisu').first().text().trim();
             html = converter.decode(html);
+            date = converter.decode(date);
             console.log('saving item',id);
-            saveBlogItem(blogId,id,html);
+            saveBlogItem(blogId,id,date,html);
         });
         var nast = $('.BlogStronicowanieNastepne a');
         if(nast.length == 0){

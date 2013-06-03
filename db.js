@@ -22,7 +22,8 @@ Db.prototype.getBlogs = function(callback){
 }
 
 Db.prototype.getBlogEntries = function(blogId, callback){
-	return callback(null,this._entries[blogId]);
+	var result = this._entries[blogId] || [];
+	return callback(null,result);
 }
 
 Db.prototype.addBlogEntry = function(blogId, entry, callback){

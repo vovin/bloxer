@@ -1,0 +1,6 @@
+form(action='/add/', method='post')
+	p You need to confirm the address of the blog to add
+	p Please make sure the address does not contain http:// part of the address.
+	p Currently the only blogs acceptable are from blox.pl
+	input(name='address', type='text', value='#{address}')
+	input(type='submit', value='Add Blog')
